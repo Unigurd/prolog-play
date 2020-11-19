@@ -5,12 +5,34 @@ let(let(V,E0,E1)) -->
     [=],   let(E0),
     [in],  let(E1).
 let(E) --> expr(E).
-expr(T) --> term(T).
-expr(binop(O1,binop(O0,X,Y),Z)) -->
-    term(X), termop(O0), expr(binop(O1,Y,Z)).
-expr(binop(O,X,Y)) -->
-    term(X), termop(O), expr(Y),
-    {Y \= binop(_,_,_)}.
+
+expr(T) --> simple_expr(T).
+expr(R) -->
+    simple_expr(X),binop(O0),expr(Y),
+    {expr_help(X,O0,Y,R)}.
+
+expr_help(X,O0,binop(O1,Y,Z),R) :-
+    binopdict(O0,_,Prec0),
+    binopdict(O1,_,Prec1),
+    Prec0 < Prec1,
+    R = binop(O0, X, binop(O1, Y, Z)).
+expr_help(X,O0,binop(O1,Y,Z),R) :-
+    binopdict(O0,_,Prec0),
+    binopdict(O1,_,Prec1),
+    Prec0 > Prec1,
+    R = binop(O1, binop(O0, X, Y), Z).
+expr_help(X,O0,binop(O1,Y,Z),R) :-
+    binopdict(O0,left,Prec0),
+    binopdict(O1,left,Prec1),
+    Prec0 == Prec1,
+    R = binop(O1, binop(O0, X, Y), Z).
+expr_help(X,O0,binop(O1,Y,Z),R) :-
+    binopdict(O0,right,Prec0),
+    binopdict(O1,right,Prec1),
+    Prec0 == Prec1,
+    R = binop(O0, X, binop(O1, Y, Z)).
+expr_help(X,O,Y,binop(O,X,Y)) :-
+    Y \= binop(_,_,_).
 
 term(X) --> simple_expr(X).
 term(binop(O1,binop(O0,X,Y),Z)) -->
@@ -32,11 +54,17 @@ var(var(y)) --> [y].
 %% number/1 cannot be used to generate.
 num(num(X),[X|Y],Y) :- number(X).
 
-termop(+) --> [+].
-termop(-) --> [-].
+binop(+) --> [+].
+binop(-) --> [-].
+binop(*) --> [*].
+binop(/) --> [/].
 
-prodOp(*) --> [*].
-prodOp(/) --> [/].
+binopdict(*,left,2).
+binopdict(/,left,2).
+binopdict(+,left,1).
+binopdict(-,left,1).
+
+
 
 lookup([(Var-Val)|_], Var, Val).
 lookup([_|Vtab], Var, Val) :-
